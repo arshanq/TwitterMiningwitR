@@ -1,0 +1,64 @@
+require(wordcloud)
+require(tm)
+require(twitteR)
+#ak_tweets = userTimeline("ArvindKejriwal", n=1000)
+
+#dh_tweets = userTimeline("drharshvardhan", n=1000)
+load('Timeline_Arvind.Rdata')
+ak_tweets= Profile_arvind
+load('Timeline_Harshvardhan.Rdata')
+dh_tweets= Profile_hasrhvardhan
+ak_txt = sapply(ak_tweets, function(x) x$getText())
+dh_txt = sapply(dh_tweets, function(x) x$getText())
+
+clean.text = function(x)
+{
+   # tolower
+   x = tolower(x)
+   # remove rt
+   x = gsub("rt", "", x)
+   # remove at
+   x = gsub("@\\w+", "", x)
+   # remove punctuation
+   x = gsub("[[:punct:]]", "", x)
+   # remove numbers
+   x = gsub("[[:digit:]]", "", x)
+   # remove links http
+   x = gsub("http\\w+", "", x)
+   # remove tabs
+   x = gsub("[ |\t]{2,}", "", x)
+   # remove blank spaces at the beginning
+   x = gsub("^ ", "", x)
+   # remove blank spaces at the end
+   x = gsub(" $", "", x)
+   return(x)
+}
+
+ak_clean = clean.text(ak_txt)
+dh_clean = clean.text(dh_txt)
+
+ak = paste(ak_clean, collapse=" ")
+dh = paste(dh_clean, collapse=" ")
+
+all = c(ak, dh)
+
+all = removeWords(all,
+c(stopwords("english"), "elections", "2014", "delhi"))
+
+corpus = Corpus(VectorSource(all))
+
+# create term-document matrix
+tdm = TermDocumentMatrix(corpus)
+
+# convert as matrix
+tdm = as.matrix(tdm)
+
+colnames(tdm) = c("Arvind","Dr")
+
+comparison.cloud(tdm, random.order=FALSE, 
+colors = c("#00B2FF", "red", "#FF0099", "#6600CC"),
+title.size=1.5, max.words=500)
+
+commonality.cloud(tdm, random.order=FALSE, 
+colors = brewer.pal(8, "Dark2"),
+title.size=1.5)
