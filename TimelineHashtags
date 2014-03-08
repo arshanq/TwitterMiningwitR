@@ -1,0 +1,32 @@
+library(stringr)
+library(plyr)
+library(tm)
+library(wordcloud)
+
+load('Timeline_Arvind.Rdata')
+load('Timeline_Harshvardhan.Rdata')
+
+arvind_df= twListToDF(Profile_arvind)
+harsh_df = twListToDF(Profile_hasrhvardhan)
+
+arvind_hashtags= str_extract_all (arvind_df$text, "#\\w+")
+harsh_hashtags = str_extract_all(harsh_df$text,"#\\w+" )
+
+arvind_hash = unlist(arvind_hashtags)
+harsh_hash = unlist(harsh_hashtags)
+
+arv_tags_freq = table(arvind_hash)
+harsh_tags_freq = table(harsh_hash)
+
+all_tags= c(arv_tags_freq,harsh_tags_freq)
+
+cols= c (
+  rep("#1B9E77",length(arv_tags_freq)),
+  rep("#7570B3",length(harsh_tags_freq))
+)
+
+wordcloud(names(all_tags), all_tags, random.order=FALSE, min.freq=1, 
+          colors=cols, ordered.colors=TRUE)
+mtext(c("@ArvindKejriwal", "@drharshvardhan"), side=2,
+      line=2, at=c(0.25, 0.75), col=c("#1B9E77", "#7570B3"),
+      family="serif", font=1, cex=1.5)
