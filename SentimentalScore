@@ -1,0 +1,144 @@
+library(twitteR)
+library(ROAuth)
+library(plyr)
+library(stringr)
+library(ggplot2)
+
+
+############################################################
+# Twitter Scrape  #AAP #BJP #Congress  
+############################################################
+
+#AAP.list <- searchTwitter('#AAP #Arvind #Kejriwal', n=100,locale="India")  
+#AAP.df = twListToDF(AAP.list)  
+#write.csv(AAP.df, file='AAPTweets.csv', row.names=F)
+
+#BJP.list <- searchTwitter('#BJP', n=100,locale="Delhi")  
+#BJP.df = twListToDF(BJP.list)  
+#write.csv(BJP.df, file='BJPTweets.csv', row.names=F)
+
+#Congress.list <- searchTwitter('#Congress', n=100,locale="Delhi")  
+#Congress.df = twListToDF(Congress.list)  
+#write.csv(Congress.df, file='CongressTweets.csv', row.names=F)
+
+
+###############################
+# Sentiment Function     
+###############################
+
+library (plyr)
+library (stringr)
+
+score.sentiment = function(sentences, pos.words, neg.words, .progress='none')  
+{  
+  require(plyr)  
+  require(stringr)       
+  
+ 
+  scores = laply(sentences, function(sentence, pos.words, neg.words) {  
+    
+    # clean up sentences with R's regex-driven global substitute, gsub():  
+    
+    sentence = gsub('[[:punct:]]', '', sentence)  
+    
+    sentence = gsub('[[:cntrl:]]', '', sentence)  
+    
+    sentence = gsub('\\d+', '', sentence)  
+    
+    # and convert to lower case:  
+    
+    sentence = tolower(sentence)  
+    
+    # split into words. str_split is in the stringr package  
+    
+    word.list = str_split(sentence, '\\s+')  
+    
+    # sometimes a list() is one level of hierarchy too much  
+    
+    words = unlist(word.list)  
+    
+    # compare our words to the dictionaries of positive & negative terms  
+    
+    pos.matches = match(words, pos.words)  
+    neg.matches = match(words, neg.words)  
+    
+    # match() returns the position of the matched term or NA  
+    # we just want a TRUE/FALSE:  
+    
+    pos.matches = !is.na(pos.matches)  
+    
+    neg.matches = !is.na(neg.matches)  
+    
+    # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():  
+    
+    score = sum(pos.matches) - sum(neg.matches)  
+    
+    return(score)  
+    
+  }, pos.words, neg.words, .progress=.progress )  
+  scores.df = data.frame(score=scores, text=sentences)  
+  return(scores.df)  
+} 
+
+
+############################################
+# Scoring Tweets & Adding a column      
+############################################
+
+#Load sentiment word lists
+hu.liu.pos = scan('positive_words.txt', what='character', comment.char=';')
+hu.liu.neg = scan('negative_words.txt', what='character', comment.char=';')
+
+#Add words to list
+pos.words = c(hu.liu.pos, 'upgrade')
+neg.words = c(hu.liu.neg, 'wtf', 'wait','waiting', 'epicfail', 'mechanical')
+
+#Import 3 csv
+DatasetAAP <- read.csv("AAPTweets.csv")
+DatasetAAP$text<-as.factor(DatasetAAP$text)
+
+DatasetBJP <- read.csv("BJPTweets.csv")
+DatasetBJP$text<-as.factor(DatasetBJP$text)
+
+DatasetCongress <- read.csv("CongressTweets.csv")
+DatasetCongress$text<-as.factor(DatasetCongress$text)
+ 
+
+#Score all tweets 
+AAP.scores = score.sentiment(DatasetAAP$text, pos.words,neg.words, .progress='text')
+BJP.scores = score.sentiment(DatasetBJP$text, pos.words,neg.words, .progress='text')
+Congress.scores = score.sentiment(DatasetCongress$text, pos.words,neg.words, .progress='text')
+
+write.csv(AAP.scores,file="AAPScores.csv",row.names=TRUE)
+write.csv(BJP.scores,file=" BJPScores.csv",row.names=TRUE)
+write.csv(Congress.scores,file="CongressScores.csv",row.names=TRUE)
+
+
+
+AAP.scores$Team = 'AAP'
+BJP.scores$Team = 'BJP'
+Congress.scores$Team = 'Congress'
+
+############################# 
+# Visualizing   	    
+#############################
+
+#hist(AAP.scores$score)
+qplot(AAP.scores$score)
+
+#hist(BJP.scores$score)
+qplot(BJP.scores$score)
+
+#hist(Congress.scores$score)
+qplot(Congress.scores$score)
+ 
+#################################
+# Comparing 3 data sets	              
+#################################
+
+all.scores = rbind(AAP.scores, BJP.scores, Congress.scores)
+
+ggplot(data=all.scores) + # ggplot works on data.frames, always
+  geom_bar(mapping=aes(x=score, fill=Team), binwidth=1) +
+  facet_grid(Team~.) + # make a separate plot for each hashtag
+  theme_bw() + scale_fill_brewer() # plain display, nicer colors
